@@ -1,0 +1,25 @@
+[project]
+name = "media-service"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Rohit Tudu", email = "rohittudu181@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "boto3>=1.43.69",
+    "fastapi>=0.141.1",
+    "pydantic-settings>=2.15.0",
+    "python-multipart>=0.0.32",
+    "sqlalchemy>=2.0.52",
+    "supabase>=2.31.0",
+    "uvicorn>=0.52.1",
+]
+
+[project.scripts]
+media-service = "media_service:main"
+
+[build-system]
+requires = ["uv_build>=0.11.2,<0.12.0"]
+build-backend = "uv_build"

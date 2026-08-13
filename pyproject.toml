@@ -1,0 +1,17 @@
+[project]
+name = "artisan-backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
+
+[tool.uv.workspace]
+members = [
+    "services/auth_service",
+    "services/media_service",
+    "services/commerce_service",
+    "services/ai_discovery_service",
+    "services/moderation_service",
+    "services/personalization_service",
+]

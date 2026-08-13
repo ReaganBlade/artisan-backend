@@ -1,0 +1,25 @@
+[project]
+name = "ai-discovery-service"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Rohit Tudu", email = "rohittudu181@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.141.1",
+    "pgvector>=0.5.0",
+    "pydantic-settings>=2.15.0",
+    "sqlalchemy>=2.0.52",
+    "torch>=2.13.0",
+    "transformers>=5.15.0",
+    "uvicorn>=0.52.1",
+]
+
+[project.scripts]
+ai-discovery-service = "ai_discovery_service:main"
+
+[build-system]
+requires = ["uv_build>=0.11.2,<0.12.0"]
+build-backend = "uv_build"
