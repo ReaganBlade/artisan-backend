@@ -8,11 +8,14 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "alembic>=1.19.1",
     "fastapi>=0.141.1",
     "pandas>=3.0.5",
+    "psycopg[binary]>=3.3.4",
     "pydantic-settings>=2.15.0",
     "scikit-learn>=1.9.0",
     "scikit-surprise>=1.1.5",
+    "sqlalchemy>=2.0.52",
     "uvicorn>=0.52.1",
 ]
 

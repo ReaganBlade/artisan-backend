@@ -1,5 +1,5 @@
-from .refresh_tokens import RefreshToken
+from .refresh_token import RefreshToken
 from .user_role import UserRole
-from .users import User
+from .user import User
 
 __all__ = ["User", "UserRole", "RefreshToken"]

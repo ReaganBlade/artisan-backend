@@ -1,12 +1,15 @@
 import uuid
 from datetime import datetime
-
-from sqlalchemy import Boolean, DateTime, Enum, String, func
+from typing import TYPE_CHECKING
+from sqlalchemy import Boolean, DateTime, Enum, String, func, text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db.base import SCHEMA, Base
 from .user_role import UserRole
+
+if TYPE_CHECKING:
+    from .refresh_token import RefreshToken
 
 
 class User(Base):
@@ -29,7 +32,7 @@ class User(Base):
         server_default=UserRole.CUSTOMER.value,
     )
     is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=True, server_default=func.true()
+        Boolean, nullable=False, default=True, server_default=text("true")
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -39,4 +42,8 @@ class User(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+    refresh_token: Mapped[list["RefreshToken"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
     )

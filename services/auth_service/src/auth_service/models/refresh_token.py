@@ -1,11 +1,15 @@
 import uuid
 from datetime import datetime
-
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
+from typing import TYPE_CHECKING
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, func, text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db.base import SCHEMA, Base
+
+
+if TYPE_CHECKING:
+    from .user import User
 
 
 class RefreshToken(Base):
@@ -28,8 +32,9 @@ class RefreshToken(Base):
     )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     is_revoked: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default=func.false()
+        Boolean, nullable=False, default=False, server_default=text("false")
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+    user: Mapped["User"] = relationship(back_populates="refresh_token")
