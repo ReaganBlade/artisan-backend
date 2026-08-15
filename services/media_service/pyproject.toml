@@ -8,9 +8,11 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "alembic>=1.19.1",
     "boto3>=1.43.69",
     "fastapi>=0.141.1",
     "pydantic-settings>=2.15.0",
+    "psycopg[binary]>=3.3.4",
     "python-multipart>=0.0.32",
     "sqlalchemy>=2.0.52",
     "supabase>=2.31.0",
