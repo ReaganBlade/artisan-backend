@@ -10,6 +10,6 @@ def main() -> None:
     uvicorn.run(
         "commerce_service.main:app",
         host="127.0.0.1",
-        port=8000,
+        port=8003,
         loop="commerce_service.core.loops:selector_loop_factory",
     )

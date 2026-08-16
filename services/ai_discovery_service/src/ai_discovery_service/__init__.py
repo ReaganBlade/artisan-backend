@@ -10,6 +10,6 @@ def main() -> None:
     uvicorn.run(
         "ai_discovery_service.main:app",
         host="127.0.0.1",
-        port=8000,
+        port=8004,
         loop="ai_discovery_service.core.loops:selector_loop_factory",
     )

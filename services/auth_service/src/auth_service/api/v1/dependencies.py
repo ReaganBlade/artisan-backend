@@ -19,7 +19,7 @@ _UNAUTHORIZED = {
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db), 
 ) -> User:
     """Resolve the authenticated user from the Bearer access token."""
     if credentials is None:

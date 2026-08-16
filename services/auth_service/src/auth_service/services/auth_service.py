@@ -18,8 +18,8 @@ from ..repositories.user_repository import (
     create_user,
     get_refresh_token_by_hash,
     get_user_by_email,
-    revoke_refresh_token,
     refresh_token_expiry,
+    revoke_refresh_token,
 )
 from ..schemas.token_schema import AuthResult
 from ..schemas.user_schema import UserCreate, UserLogin, UserResponse

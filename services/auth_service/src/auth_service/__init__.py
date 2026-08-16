@@ -10,6 +10,6 @@ def main() -> None:
     uvicorn.run(
         "auth_service.main:app",
         host="127.0.0.1",
-        port=8000,
+        port=8001,
         loop="auth_service.core.loops:selector_loop_factory",
     )
