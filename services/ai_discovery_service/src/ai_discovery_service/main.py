@@ -1,8 +1,14 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
+from .api.v1.router import api_router
 from .db.session import close_db
+
+# Dev-only: allow the Next.js dev server to call this service directly.
+# Replace with your production frontend origin(s) before deploying.
+CORS_ORIGINS = ["http://localhost:3000"]
 
 
 @asynccontextmanager
@@ -17,6 +23,16 @@ app = FastAPI(
     description="AI Discovery & Search microservice — owns the ai_discovery_schema database schema.",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+app.include_router(api_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
