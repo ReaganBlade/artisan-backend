@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+psycopg://postgres:postgres@localhost:5432/artisan"
     DEBUG: bool = False
     ENVIRONMENT: str = "development"
+    AUTO_MIGRATE: bool = True
 
     # --- Auth / JWT ---
     # Dev-only default (>= 32 bytes for HS256). Override in .env / production.
