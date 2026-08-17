@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Docker support** for local development:
+  - `Dockerfile` — multi-stage build using `python:3.13-slim` and `uv` for fast
+    dependency management. Workspace-aware, copies only the `auth-service` package
+    and its Alembic config.
+  - `docker-compose.yml` — orchestrates PostgreSQL 16 and the auth-service container
+    with a health-check dependency, volume-backed data, and environment variable
+    injection for `DATABASE_URL`, `JWT_SECRET_KEY`, etc.
+  - `README.md` — documents all endpoints, Docker quickstart, and environment
+    variables.
+- **Auto-migration on startup** (`main.py` lifespan):
+  - Alembic `upgrade head` runs automatically when `AUTO_MIGRATE=true` (default).
+  - Resolves `alembic.ini` and the `alembic/` script directory via absolute paths
+    derived from `__file__`, so it works regardless of the container's working
+    directory.
+- **`AUTO_MIGRATE` setting** (`core/config.py`):
+  - New boolean setting (default `true`) to control whether Alembic runs on app
+    startup. Set to `false` in production or when managing migrations manually.
 - **Full auth API** under `POST/GET /api/v1/auth/*`:
   - `POST /api/v1/auth/signup` — create a customer account and sign in immediately.
   - `POST /api/v1/auth/signin` — exchange email + password for an access/refresh token pair.
@@ -50,6 +67,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `psycopg[binary]` for the async driver.
   - `supabase` client added.
   - `passlib` removed.
+  - `fastapi[standard]` extra enabled (includes `uvicorn[standard]`, `httpx`,
+    `email-validator`, `pydantic-settings`).
+  - `uv_build` version constraint relaxed from `>=0.11.2,<0.12.0` to `>=0.11.2`
+    for compatibility with newer uv releases.
+- **CORS origins** expanded to include `http://localhost:8001` alongside the
+  existing `http://localhost:3000`.
 - **Model files renamed** from `users.py`/`refresh_tokens.py` to
   `user.py`/`refresh_token.py` (single-table-per-module convention).
 - **Stub endpoints** `signin.py`/`signup.py` replaced by a single `auth.py`

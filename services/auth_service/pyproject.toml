@@ -10,7 +10,7 @@ requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.19.1",
     "bcrypt>=5.0.0",
-    "fastapi>=0.141.1",
+    "fastapi[standard]>=0.141.1",
     "psycopg[binary]>=3.3.4",
     "pydantic-settings>=2.15.0",
     "pyjwt>=2.13.0",
@@ -23,5 +23,5 @@ dependencies = [
 auth-service = "auth_service:main"
 
 [build-system]
-requires = ["uv_build>=0.11.2,<0.12.0"]
+requires = ["uv_build>=0.11.2"]
 build-backend = "uv_build"
