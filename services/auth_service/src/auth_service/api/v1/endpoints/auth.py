@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ....core.config import settings
+from ....core.limiter import limiter
 from ....db.session import get_db
 from ....models import User
 from ....schemas.token_schema import AuthResult, LogoutRequest, RefreshRequest
@@ -16,7 +18,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
     response_model=AuthResult,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit(settings.RATE_LIMIT_SIGNUP)
 async def signup(
+    request: Request,
     payload: UserCreate,
     db: AsyncSession = Depends(get_db),
 ) -> AuthResult:
@@ -25,7 +29,9 @@ async def signup(
 
 
 @router.post("/signin", response_model=AuthResult)
+@limiter.limit(settings.RATE_LIMIT_SIGNIN)
 async def signin(
+    request: Request,
     payload: UserLogin,
     db: AsyncSession = Depends(get_db),
 ) -> AuthResult:
@@ -34,7 +40,9 @@ async def signin(
 
 
 @router.post("/refresh", response_model=AuthResult)
+@limiter.limit(settings.RATE_LIMIT_REFRESH)
 async def refresh(
+    request: Request,
     payload: RefreshRequest,
     db: AsyncSession = Depends(get_db),
 ) -> AuthResult:
@@ -43,7 +51,9 @@ async def refresh(
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit(settings.RATE_LIMIT_LOGOUT)
 async def logout(
+    request: Request,
     payload: LogoutRequest,
     db: AsyncSession = Depends(get_db),
 ) -> Response:
@@ -53,6 +63,10 @@ async def logout(
 
 
 @router.get("/me", response_model=UserResponse)
-async def me(current_user: User = Depends(get_current_user)) -> User:
+@limiter.limit(settings.RATE_LIMIT_ME)
+async def me(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+) -> User:
     """Return the profile of the currently authenticated user."""
     return current_user
