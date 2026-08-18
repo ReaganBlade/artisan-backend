@@ -32,6 +32,14 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
+    # --- Rate Limiting (slowapi) ---
+    # Per-IP limits for auth endpoints. Format: "N/period" (e.g. "5/minute").
+    RATE_LIMIT_SIGNUP: str = "5/hour"
+    RATE_LIMIT_SIGNIN: str = "10/minute"
+    RATE_LIMIT_REFRESH: str = "30/minute"
+    RATE_LIMIT_LOGOUT: str = "30/minute"
+    RATE_LIMIT_ME: str = "60/minute"
+
     # --- Supabase ---
     # Anon/publishable key. The client is created lazily, so the service runs
     # fine without these until the Supabase client is actually used.

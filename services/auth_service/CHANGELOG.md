@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Rate limiting** on all auth endpoints via `slowapi`:
+  - `POST /auth/signup` — 5 requests/hour per IP.
+  - `POST /auth/signin` — 10 requests/minute per IP (brute-force protection).
+  - `POST /auth/refresh` — 30 requests/minute per IP.
+  - `POST /auth/logout` — 30 requests/minute per IP.
+  - `GET /auth/me` — 60 requests/minute per IP.
+  - Limits are configurable via `RATE_LIMIT_SIGNUP`, `RATE_LIMIT_SIGNIN`,
+    `RATE_LIMIT_REFRESH`, `RATE_LIMIT_LOGOUT`, and `RATE_LIMIT_ME` env vars
+    (default `"N/period"` format, e.g. `"10/minute"`).
+  - Custom 429 JSON response handler returns
+    `{"detail": "Rate limit exceeded: ..."}`.
+  - Shared `Limiter` instance lives in `core/limiter.py` to avoid circular
+    imports between `main.py` and the endpoint modules.
+- **`core/limiter.py`** — module that owns the shared `slowapi.Limiter`
+  instance keyed by client IP (`get_remote_address`).
 - **Docker support** for local development:
   - `Dockerfile` — multi-stage build using `python:3.13-slim` and `uv` for fast
     dependency management. Workspace-aware, copies only the `auth-service` package
@@ -64,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Replaced passlib with direct bcrypt** usage — passlib 1.7.4 breaks with
   bcrypt >= 4.1; bcrypt is now a hard dependency.
 - **Dependency updates** (`pyproject.toml`):
+  - `slowapi` added for per-IP rate limiting.
   - `psycopg[binary]` for the async driver.
   - `supabase` client added.
   - `passlib` removed.
