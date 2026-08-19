@@ -1,116 +1,137 @@
-"""Dummy Media Service endpoints for the Artwork catalog.
-
-All handlers return deterministic mock data (see ``dummy_data.py``) that mirrors
-the shapes of the SQLAlchemy models in ``media_service.models``. Replace the
-``dummy_`` helpers with real repository calls as the backend is built out.
-"""
+"""Artwork catalog endpoints backed by real persistence."""
 
 from __future__ import annotations
 
-from typing import Any
+import uuid
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..dummy_data import (
-    ARTWORKS,
-    MEDIA_FILES,
-    _MEDIA_URL_BASE,
-    new_id,
-    paginate,
+from ...dependencies import get_db
+from ....schemas.artwork_schemas import (
+    ArtworkCreate,
+    ArtworkListResponse,
+    ArtworkResponse,
+    ArtworkUpdate,
 )
+from ....services import artwork_service
 
 router = APIRouter(prefix="/artworks", tags=["artworks"])
 
 
-def _find_artwork(artwork_id: str) -> dict[str, Any]:
-    for artwork in ARTWORKS:
-        if artwork["id"] == artwork_id:
-            return artwork
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artwork not found.")
+# ---------------------------------------------------------------------------
+# List
+# ---------------------------------------------------------------------------
 
 
-@router.get("")
+@router.get("", response_model=ArtworkListResponse)
 async def list_artworks(
-    status_filter: str | None = Query(None, alias="status", description="Filter by artwork status."),
-    art_type: str | None = Query(None, description="Filter by art type (Painting, Print, ...)."),
+    profile_id: uuid.UUID | None = Query(None, description="Filter by profile."),
+    status_filter: str | None = Query(None, alias="status", description="Filter by status."),
+    art_type: str | None = Query(None, description="Filter by art type."),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
-) -> dict[str, Any]:
-    """List published artworks, optionally filtered and paginated.
-
-    Used by the frontend wall / browse / search-result grids.
-    """
-    items = [
-        a
-        for a in ARTWORKS
-        if (status_filter is None or a["status"] == status_filter)
-        and (art_type is None or a["art_type"] == art_type)
-    ]
-    return paginate(items, limit, offset)
-
-
-@router.post("", status_code=status.HTTP_201_CREATED)
-async def create_artwork(payload: dict[str, Any]) -> dict[str, Any]:
-    """Create an artwork draft (dummy — no persistence).
-
-    ``payload`` accepts any subset of artwork fields; ``id`` is always generated.
-    """
-    artwork_id = new_id()
-    return {
-        "id": artwork_id,
-        "profile_id": payload.get("profile_id", "11111111-1111-1111-1111-111111111101"),
-        "title": payload.get("title", "Untitled"),
-        "description": payload.get("description"),
-        "art_type": payload.get("art_type", "Print"),
-        "price": payload.get("price"),
-        "status": payload.get("status", "draft"),
-        "primary_media_url": payload.get("primary_media_url"),
-        "created_at": "2026-08-16T09:00:00Z",
-        "updated_at": "2026-08-16T09:00:00Z",
-    }
+    db: AsyncSession = Depends(get_db),
+) -> ArtworkListResponse:
+    """List artworks with optional filters and pagination."""
+    artworks, total = await artwork_service.list_artworks(
+        db,
+        profile_id=profile_id,
+        status_filter=status_filter,
+        art_type=art_type,
+        limit=limit,
+        offset=offset,
+    )
+    return ArtworkListResponse(
+        items=[ArtworkResponse.model_validate(a) for a in artworks],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
-@router.get("/{artwork_id}")
-async def get_artwork(artwork_id: str) -> dict[str, Any]:
-    """Full artwork record for the detail page / lightbox."""
-    return _find_artwork(artwork_id)
+# ---------------------------------------------------------------------------
+# Create
+# ---------------------------------------------------------------------------
 
 
-@router.patch("/{artwork_id}")
-async def update_artwork(artwork_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-    """Update artwork fields (dummy — returns the payload merged onto the mock)."""
-    artwork = _find_artwork(artwork_id)
-    artwork.update(payload)
-    artwork["updated_at"] = "2026-08-16T09:00:00Z"
-    return artwork
+@router.post(
+    "",
+    response_model=ArtworkResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_artwork(
+    payload: ArtworkCreate,
+    db: AsyncSession = Depends(get_db),
+) -> ArtworkResponse:
+    """Create a new artwork."""
+    artwork = await artwork_service.create_artwork(db, payload)
+    return ArtworkResponse.model_validate(artwork)
 
 
-@router.delete("/{artwork_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_artwork(artwork_id: str) -> None:
-    """Remove an artwork (dummy — mock list is untouched)."""
-    _find_artwork(artwork_id)
-    return None
+# ---------------------------------------------------------------------------
+# Read
+# ---------------------------------------------------------------------------
 
 
-@router.get("/{artwork_id}/media")
-async def list_artwork_media(artwork_id: str) -> list[dict[str, Any]]:
-    """All media files attached to an artwork (gallery / detail carousel)."""
-    _find_artwork(artwork_id)
-    return [m for m in MEDIA_FILES if m["artwork_id"] == artwork_id]
+@router.get("/{artwork_id}", response_model=ArtworkResponse)
+async def get_artwork(
+    artwork_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> ArtworkResponse:
+    """Full artwork record for the detail page."""
+    artwork = await artwork_service.get_artwork_by_id(db, artwork_id)
+    if artwork is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Artwork not found.",
+        )
+    return ArtworkResponse.model_validate(artwork)
 
 
-@router.post("/{artwork_id}/media", status_code=status.HTTP_201_CREATED)
-async def attach_media(artwork_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-    """Attach a media file to an artwork (dummy — no upload, no persistence)."""
-    _find_artwork(artwork_id)
-    return {
-        "id": new_id(),
-        "artwork_id": artwork_id,
-        "file_url": payload.get(
-            "file_url", f"{_MEDIA_URL_BASE}/{artwork_id}/uploaded.jpg"
-        ),
-        "file_type": payload.get("file_type", "image/jpeg"),
-        "file_size_bytes": payload.get("file_size_bytes"),
-        "display_order": payload.get("display_order", 0),
-        "created_at": "2026-08-16T09:00:00Z",
-    }
+# ---------------------------------------------------------------------------
+# Update
+# ---------------------------------------------------------------------------
+
+
+@router.patch("/{artwork_id}", response_model=ArtworkResponse)
+async def update_artwork(
+    artwork_id: uuid.UUID,
+    payload: ArtworkUpdate,
+    db: AsyncSession = Depends(get_db),
+) -> ArtworkResponse:
+    """Partial update of artwork fields."""
+    artwork = await artwork_service.get_artwork_by_id(db, artwork_id)
+    if artwork is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Artwork not found.",
+        )
+    updated = await artwork_service.update_artwork(db, artwork, payload)
+    return ArtworkResponse.model_validate(updated)
+
+
+# ---------------------------------------------------------------------------
+# Delete
+# ---------------------------------------------------------------------------
+
+
+@router.delete(
+    "/{artwork_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_artwork(
+    artwork_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Delete an artwork (cascades to media_files)."""
+    artwork = await artwork_service.get_artwork_by_id(db, artwork_id)
+    if artwork is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Artwork not found.",
+        )
+    await artwork_service.delete_artwork(db, artwork)
+
+
+

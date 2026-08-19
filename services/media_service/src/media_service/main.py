@@ -1,19 +1,41 @@
+"""Application entry point for the Media Service."""
+
+import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api.v1.router import api_router
+from .core.config import settings
 from .db.session import close_db
+
+logger = logging.getLogger(__name__)
 
 # Dev-only: allow the Next.js dev server to call this service directly.
 # Replace with your production frontend origin(s) before deploying.
-CORS_ORIGINS = ["http://localhost:3000"]
+CORS_ORIGINS = ["http://localhost:3000", "http://localhost:8002"]
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Gracefully release the async engine's connection pool on shutdown."""
+    """Run Alembic migrations on startup, then gracefully release DB pool on shutdown."""
+    if settings.AUTO_MIGRATE:
+        try:
+            from alembic import command
+            from alembic.config import Config as AlembicConfig
+
+            service_root = Path(__file__).resolve().parents[2]
+            alembic_ini = service_root / "alembic.ini"
+            alembic_cfg = AlembicConfig(str(alembic_ini))
+            alembic_cfg.set_main_option(
+                "script_location", str(service_root / "alembic")
+            )
+            command.upgrade(alembic_cfg, "head")
+            logger.info("Alembic migrations applied successfully.")
+        except Exception:
+            logger.exception("Alembic migration failed — continuing anyway.")
     yield
     await close_db()
 

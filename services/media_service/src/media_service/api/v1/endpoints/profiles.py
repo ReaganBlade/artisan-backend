@@ -1,80 +1,152 @@
-"""Dummy Media Service endpoints for artist profiles.
-
-Payloads mirror the ``Profile`` model in ``media_service.models``.
-"""
+"""Artist-profile endpoints backed by real persistence."""
 
 from __future__ import annotations
 
-from typing import Any
+import uuid
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..dummy_data import ARTWORKS, PROFILES, new_id, paginate
+from ...dependencies import get_db
+from ....schemas.artwork_schemas import ArtworkListResponse, ArtworkResponse
+from ....schemas.profile_schemas import (
+    ProfileCreate,
+    ProfileResponse,
+    ProfileUpdate,
+)
+from ....services import artwork_service, profile_service
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
 
 
-def _find_profile(profile_id: str) -> dict[str, Any]:
-    for profile in PROFILES:
-        if profile["id"] == profile_id:
-            return profile
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found.")
+# ---------------------------------------------------------------------------
+# List
+# ---------------------------------------------------------------------------
 
 
-@router.get("")
-async def list_profiles(limit: int = 20, offset: int = 0) -> dict[str, Any]:
+@router.get("", response_model=dict)
+async def list_profiles(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
     """List artist profiles (browse-artists page)."""
-    return paginate(PROFILES, limit, offset)
-
-
-@router.get("/by-username/{username}", include_in_schema=False)
-async def get_profile_by_username(username: str) -> dict[str, Any]:
-    """Resolve a profile by username (dummy convenience helper)."""
-    for profile in PROFILES:
-        if profile["username"] == username:
-            return profile
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found.")
-
-
-@router.get("/{profile_id}")
-async def get_profile(profile_id: str) -> dict[str, Any]:
-    """Public artist profile (artist page header, artwork attribution)."""
-    return _find_profile(profile_id)
-
-
-@router.patch("/{profile_id}")
-async def update_profile(profile_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-    """Update profile display fields (dummy — returns the payload merged in)."""
-    profile = _find_profile(profile_id)
-    profile.update(payload)
-    profile["updated_at"] = "2026-08-16T09:00:00Z"
-    return profile
-
-
-@router.get("/{profile_id}/artworks")
-async def list_profile_artworks(
-    profile_id: str,
-    limit: int = 20,
-    offset: int = 0,
-) -> dict[str, Any]:
-    """All artworks by one artist (artist page grid)."""
-    _find_profile(profile_id)
-    items = [a for a in ARTWORKS if a["profile_id"] == profile_id]
-    return paginate(items, limit, offset)
-
-
-@router.post("", status_code=status.HTTP_201_CREATED)
-async def create_profile(payload: dict[str, Any]) -> dict[str, Any]:
-    """Create a profile (dummy — no persistence)."""
+    profiles, total = await profile_service.list_profiles(db, limit=limit, offset=offset)
     return {
-        "id": new_id(),
-        "user_id": payload.get("user_id", new_id()),
-        "username": payload.get("username", "artist"),
-        "display_name": payload.get("display_name", "New Artist"),
-        "bio": payload.get("bio"),
-        "avatar_url": payload.get("avatar_url"),
-        "cover_image_url": payload.get("cover_image_url"),
-        "social_links": payload.get("social_links", {}),
-        "created_at": "2026-08-16T09:00:00Z",
-        "updated_at": "2026-08-16T09:00:00Z",
+        "items": [ProfileResponse.model_validate(p) for p in profiles],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
     }
+
+
+# ---------------------------------------------------------------------------
+# Read by username (convenience route — must come before {profile_id})
+# ---------------------------------------------------------------------------
+
+
+@router.get("/by-username/{username}", response_model=ProfileResponse)
+async def get_profile_by_username(
+    username: str,
+    db: AsyncSession = Depends(get_db),
+) -> ProfileResponse:
+    """Resolve a profile by username (used for ``/artist/{username}`` routing)."""
+    profile = await profile_service.get_profile_by_username(db, username)
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Profile not found.",
+        )
+    return ProfileResponse.model_validate(profile)
+
+
+# ---------------------------------------------------------------------------
+# Read by ID
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{profile_id}", response_model=ProfileResponse)
+async def get_profile(
+    profile_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> ProfileResponse:
+    """Public artist profile (artist page header, artwork attribution)."""
+    profile = await profile_service.get_profile_by_id(db, profile_id)
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Profile not found.",
+        )
+    return ProfileResponse.model_validate(profile)
+
+
+# ---------------------------------------------------------------------------
+# Create
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "",
+    response_model=ProfileResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_profile(
+    payload: ProfileCreate,
+    db: AsyncSession = Depends(get_db),
+) -> ProfileResponse:
+    """Create a new artist profile."""
+    profile = await profile_service.create_profile(db, payload)
+    return ProfileResponse.model_validate(profile)
+
+
+# ---------------------------------------------------------------------------
+# Update
+# ---------------------------------------------------------------------------
+
+
+@router.patch("/{profile_id}", response_model=ProfileResponse)
+async def update_profile(
+    profile_id: uuid.UUID,
+    payload: ProfileUpdate,
+    db: AsyncSession = Depends(get_db),
+) -> ProfileResponse:
+    """Partial update of profile display fields."""
+    profile = await profile_service.get_profile_by_id(db, profile_id)
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Profile not found.",
+        )
+    updated = await profile_service.update_profile(db, profile, payload)
+    return ProfileResponse.model_validate(updated)
+
+
+# ---------------------------------------------------------------------------
+# Profile's artworks
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{profile_id}/artworks", response_model=ArtworkListResponse)
+async def list_profile_artworks(
+    profile_id: uuid.UUID,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+) -> ArtworkListResponse:
+    """All artworks by one artist (artist page grid)."""
+    # Verify profile exists
+    profile = await profile_service.get_profile_by_id(db, profile_id)
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Profile not found.",
+        )
+    artworks, total = await artwork_service.list_artworks(
+        db, profile_id=profile_id, limit=limit, offset=offset,
+    )
+    return ArtworkListResponse(
+        items=[ArtworkResponse.model_validate(a) for a in artworks],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
