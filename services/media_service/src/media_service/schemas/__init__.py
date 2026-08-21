@@ -11,6 +11,7 @@ from .media_schemas import (
     MediaFileCreate,
     MediaFileListResponse,
     MediaFileResponse,
+    MediaFileUpdate,
 )
 from .profile_schemas import (
     ProfileBase,
@@ -36,6 +37,7 @@ __all__ = [
     "MediaFileCreate",
     "MediaFileListResponse",
     "MediaFileResponse",
+    "MediaFileUpdate",
     # Common
     "ListResponse",
     "PaginationParams",

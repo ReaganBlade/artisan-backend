@@ -1,11 +1,15 @@
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db.base import SCHEMA, Base
+
+if TYPE_CHECKING:
+    from .artworks import Artwork
 
 
 class Profile(Base):
@@ -39,4 +43,10 @@ class Profile(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    # -- relationships --
+    artworks: Mapped[list["Artwork"]] = relationship(
+        back_populates="profile",
+        cascade="save-update, merge",
     )

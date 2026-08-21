@@ -1,11 +1,15 @@
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db.base import SCHEMA, Base
+
+if TYPE_CHECKING:
+    from .artworks import Artwork
 
 
 class MediaFile(Base):
@@ -32,3 +36,6 @@ class MediaFile(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+    # -- relationships --
+    artwork: Mapped["Artwork"] = relationship(back_populates="media_files")

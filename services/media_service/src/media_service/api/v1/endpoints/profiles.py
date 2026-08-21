@@ -122,6 +122,29 @@ async def update_profile(
 
 
 # ---------------------------------------------------------------------------
+# Delete
+# ---------------------------------------------------------------------------
+
+
+@router.delete(
+    "/{profile_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_profile(
+    profile_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Delete an artist profile."""
+    profile = await profile_service.get_profile_by_id(db, profile_id)
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Profile not found.",
+        )
+    await profile_service.delete_profile(db, profile)
+
+
+# ---------------------------------------------------------------------------
 # Profile's artworks
 # ---------------------------------------------------------------------------
 

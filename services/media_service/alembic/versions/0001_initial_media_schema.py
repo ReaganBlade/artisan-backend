@@ -106,6 +106,9 @@ def upgrade() -> None:
     op.create_index(
         "ix_artworks_status", "artworks", ["status"], schema=SCHEMA
     )
+    op.create_index(
+        "ix_artworks_art_type", "artworks", ["art_type"], schema=SCHEMA
+    )
 
     op.create_table(
         "media_files",
@@ -146,6 +149,7 @@ def downgrade() -> None:
         "ix_media_files_artwork_id", table_name="media_files", schema=SCHEMA
     )
     op.drop_table("media_files", schema=SCHEMA)
+    op.drop_index("ix_artworks_art_type", table_name="artworks", schema=SCHEMA)
     op.drop_index("ix_artworks_status", table_name="artworks", schema=SCHEMA)
     op.drop_index(
         "ix_artworks_profile_id", table_name="artworks", schema=SCHEMA
