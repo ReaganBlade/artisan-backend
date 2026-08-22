@@ -30,6 +30,12 @@ async def create_user(
     return user
 
 
+async def list_all_users(db: AsyncSession) -> list[User]:
+    """Return every user (admin-only use)."""
+    result = await db.execute(select(User))
+    return list(result.scalars().all())
+
+
 async def update_user(
     db: AsyncSession,
     user: User,
