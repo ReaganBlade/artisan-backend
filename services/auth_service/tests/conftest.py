@@ -20,7 +20,7 @@ from auth_service.main import app
 # Point at a local Postgres for tests. Override via TEST_DATABASE_URL when needed.
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql+psycopg://postgres:postgres@localhost:5432/artisan",
+    "postgresql+psycopg://postgres:postgres@localhost:5432/artisan?connect_timeout=3",
 )
 
 

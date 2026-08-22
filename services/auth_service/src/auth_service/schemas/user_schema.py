@@ -28,6 +28,14 @@ class UserLogin(UserBase):
     password: str = Field(min_length=1, max_length=72)
 
 
+class UserUpdate(BaseModel):
+    """Payload for PATCH /users/{user_id} — all fields optional."""
+
+    email: str | None = Field(default=None, pattern=EMAIL_PATTERN)
+    role: UserRole | None = None
+    is_active: bool | None = None
+
+
 class UserResponse(UserBase):
     """User representation returned to clients — never includes the hash."""
 
@@ -37,3 +45,4 @@ class UserResponse(UserBase):
     role: UserRole
     is_active: bool
     created_at: datetime
+    updated_at: datetime
