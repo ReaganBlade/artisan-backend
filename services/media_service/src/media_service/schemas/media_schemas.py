@@ -35,6 +35,23 @@ class MediaFileCreate(MediaFileBase):
 
 
 # ---------------------------------------------------------------------------
+# Update
+# ---------------------------------------------------------------------------
+
+
+class MediaFileUpdate(BaseModel):
+    """Payload accepted by ``PATCH /media/{id}``.
+
+    All fields are optional — only supplied keys are updated.
+    """
+
+    file_url: str | None = Field(default=None, max_length=512)
+    file_type: str | None = Field(default=None, max_length=50)
+    file_size_bytes: int | None = None
+    display_order: int | None = Field(default=None, ge=0)
+
+
+# ---------------------------------------------------------------------------
 # Response
 # ---------------------------------------------------------------------------
 

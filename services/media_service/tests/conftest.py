@@ -8,20 +8,21 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # psycopg's async driver can't run on Windows' default ProactorEventLoop.
-# Force the selector-based loop so DB-backed tests work on Windows.
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-import auth_service.models  # noqa: F401  (register all models on Base.metadata)
-from auth_service.db.base import SCHEMA, Base
-from auth_service.db.session import get_db
-from auth_service.main import app
+import media_service.models  # noqa: F401  (register all models on Base.metadata)
+from media_service.db.base import SCHEMA, Base
+from media_service.db.session import get_db
+from media_service.main import app
 
-# Point at a local Postgres for tests. Override via TEST_DATABASE_URL when needed.
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql+psycopg://postgres:postgres@localhost:5432/artisan?connect_timeout=3",
+    "postgresql+psycopg://postgres:postgres@localhost:5432/artisan",
 )
+
+# Short timeout so tests skip quickly when Postgres is unreachable.
+CONNECT_TIMEOUT = 3
 
 
 def _run(coro):
@@ -31,21 +32,22 @@ def _run(coro):
 
 async def _init_schema(engine) -> None:
     async with engine.begin() as conn:
-        await conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS {SCHEMA}'))
+        await conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA}"))
         await conn.run_sync(Base.metadata.create_all)
 
 
 async def _drop_schema(engine) -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-        await conn.execute(text(f'DROP SCHEMA IF EXISTS {SCHEMA} CASCADE'))
+        await conn.execute(text(f"DROP SCHEMA IF EXISTS {SCHEMA} CASCADE"))
 
 
 async def _clean_tables(engine) -> None:
     async with engine.begin() as conn:
         await conn.execute(
             text(
-                f"TRUNCATE TABLE {SCHEMA}.refresh_tokens, {SCHEMA}.users RESTART IDENTITY CASCADE"
+                f"TRUNCATE TABLE {SCHEMA}.media_files, {SCHEMA}.artworks, "
+                f"{SCHEMA}.profiles RESTART IDENTITY CASCADE"
             )
         )
 
@@ -53,10 +55,14 @@ async def _clean_tables(engine) -> None:
 @pytest.fixture(scope="session")
 def db_engine():
     """Engine against the test database; skips the whole session when unreachable."""
-    engine = create_async_engine(TEST_DATABASE_URL)
+    engine = create_async_engine(
+        TEST_DATABASE_URL,
+        connect_args={"connect_timeout": CONNECT_TIMEOUT},
+        pool_pre_ping=True,
+    )
     try:
         _run(_init_schema(engine))
-    except Exception as exc:  # noqa: BLE001 — any connection failure => skip
+    except Exception as exc:  # noqa: BLE001
         pytest.skip(
             f"Postgres unreachable at {TEST_DATABASE_URL} ({exc}). "
             "DB-backed tests skipped — start a local Postgres or set TEST_DATABASE_URL."
@@ -68,11 +74,7 @@ def db_engine():
 
 @pytest.fixture()
 def _clean_tables_between_tests(db_engine):
-    """Empty users + refresh_tokens before each test for isolation.
-
-    Applied via pytestmark in the DB-backed test modules only, so the
-    pure unit tests keep running without a database.
-    """
+    """Empty tables before each test for isolation."""
     _run(_clean_tables(db_engine))
     yield
 

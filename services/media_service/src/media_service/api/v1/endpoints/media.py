@@ -16,10 +16,12 @@ from ....schemas.media_schemas import (
     MediaFileCreate,
     MediaFileListResponse,
     MediaFileResponse,
+    MediaFileUpdate,
 )
 from ....services import artwork_service, upload_service
 
 router = APIRouter(prefix="/artworks/{artwork_id}/media", tags=["media"])
+media_router = APIRouter(prefix="/media", tags=["media"])
 
 
 # ---------------------------------------------------------------------------
@@ -118,5 +120,48 @@ async def delete_artwork_media(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Media file not found for this artwork.",
+        )
+    await upload_service.delete_media_file(db, media)
+
+
+# ===========================================================================
+# Standalone media routes (PATCH /media/{media_id}, DELETE /media/{media_id})
+# ===========================================================================
+
+
+@media_router.patch(
+    "/{media_id}",
+    response_model=MediaFileResponse,
+)
+async def update_media(
+    media_id: uuid.UUID,
+    payload: MediaFileUpdate,
+    db: AsyncSession = Depends(get_db),
+) -> MediaFileResponse:
+    """Partial update of media file metadata."""
+    media = await upload_service.get_media_file_by_id(db, media_id)
+    if media is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Media file not found.",
+        )
+    updated = await upload_service.update_media_file(db, media, payload)
+    return MediaFileResponse.model_validate(updated)
+
+
+@media_router.delete(
+    "/{media_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_media(
+    media_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Delete a media file by its ID."""
+    media = await upload_service.get_media_file_by_id(db, media_id)
+    if media is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Media file not found.",
         )
     await upload_service.delete_media_file(db, media)

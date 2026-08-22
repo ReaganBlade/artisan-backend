@@ -17,7 +17,7 @@ from supabase import Client, create_client
 
 from ..core.config import settings
 from ..models.media_files import MediaFile
-from ..schemas.media_schemas import MediaFileCreate
+from ..schemas.media_schemas import MediaFileCreate, MediaFileUpdate
 
 
 # ---------------------------------------------------------------------------
@@ -171,3 +171,17 @@ async def get_media_file_by_id(
     """Return a single media file by its PK."""
     result = await db.execute(select(MediaFile).where(MediaFile.id == media_id))
     return result.scalar_one_or_none()
+
+
+async def update_media_file(
+    db: AsyncSession,
+    media: MediaFile,
+    payload: MediaFileUpdate,
+) -> MediaFile:
+    """Apply partial updates to an existing media file."""
+    update_data = payload.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(media, field, value)
+    await db.flush()
+    await db.refresh(media)
+    return media

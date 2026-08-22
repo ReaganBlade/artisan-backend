@@ -2,18 +2,17 @@ import pytest
 from fastapi import HTTPException
 
 pytestmark = pytest.mark.usefixtures("_clean_tables_between_tests")
-from sqlalchemy import select
 
 from auth_service.core.security import (
     decode_access_token,
     hash_refresh_token,
     verify_password,
 )
-from auth_service.models import RefreshToken, User
-from auth_service.repositories.user_repository import (
+from auth_service.models import User
+from auth_service.repositories.refresh_token_repository import (
     get_refresh_token_by_hash,
-    get_user_by_email,
 )
+from auth_service.repositories.user_repository import get_user_by_email
 from auth_service.schemas.user_schema import UserCreate, UserLogin
 from auth_service.services import auth_service
 
